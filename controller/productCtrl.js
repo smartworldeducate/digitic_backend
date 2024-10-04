@@ -1,11 +1,44 @@
+const multer = require('multer');
 const Product = require("../models/productModel");
 const User = require("../models/userModel");
 const asyncHandler = require("express-async-handler");
 const slugify = require("slugify");
 const validateMongoDbId = require("../utils/validateMongodbId");
 
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/'); // Path to save images, make sure this folder exists
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname)); // Generates a unique filename
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 1024 * 1024 * 5 }, // Limit file size to 5MB
+  fileFilter: function (req, file, cb) {
+    const fileTypes = /jpeg|jpg|png/;
+    const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimeType = fileTypes.test(file.mimetype);
+
+    if (mimeType && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Images only!'));
+    }
+  }
+});
+
+
 const createProduct = asyncHandler(async (req, res) => {
   try {
+    if (req.file) {
+      req.body.image = req.file.filename; // Save the image filename in the body
+    }
+
+    // Generate slug if title is present
     if (req.body.title) {
       req.body.slug = slugify(req.body.title);
     }
@@ -197,4 +230,5 @@ module.exports = {
   deleteProduct,
   addToWishlist,
   rating,
+  upload,
 };
